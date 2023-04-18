@@ -15,7 +15,7 @@ export const nodes = [
 export const links = [
   {
     id: '1',
-    name: '非正常关系',
+    name: '正常关系',
     source: '111',
     sourceId: '111',
     target: '236',
