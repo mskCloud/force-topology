@@ -1,0 +1,123 @@
+@black: #000;
+@white: #fff;
+@color_primary: #5b8bff;
+
+@node_bg: @white;
+@node_border: @color_primary;
+@node_border_width: 2px;
+@node_title: #262626;
+@node_bg_hover: #69d5e8;
+
+@link_color: #abd1d9;
+@link_width: 2px;
+@link_text_color: @black;
+@link_color_hover: @color_primary;
+
+.UxTopology {
+  cursor: move;
+  .wrapper {
+    &-links {
+      color: @link_color;
+      cursor: pointer;
+      .link {
+        &-out {
+          stroke: transparent;
+          stroke-width: @link_width;
+        }
+        &-in {
+          fill: @link_color;
+          stroke: @link_color;
+          stroke-width: 1px;
+        }
+        &-text {
+          font-size: 8px;
+          fill: @link_text_color;
+        }
+        &-arrow {
+          fill: @link_color;
+        }
+        &.active-link {
+          .link-in {
+            stroke-width: 3px;
+          }
+        }
+        &.active {
+          .link-out {
+            stroke: transparent;
+          }
+          .link-in {
+            fill: @link_color_hover;
+            stroke: @link_color_hover;
+          }
+          .link-text {
+            fill: @link_color_hover;
+          }
+          .link-arrow {
+            fill: @link_color_hover;
+          }
+        }
+        &.no-active {
+          opacity: 0.3;
+        }
+      }
+    }
+    &-nodes {
+      .node {
+        cursor: pointer;
+        .ring {
+          width: 42px;
+          height: 42px;
+          fill: #e056fd;
+          stroke: transparent;
+          opacity: 0;
+        }
+        .out-line {
+          fill: @node_bg;
+          stroke: @node_border;
+          stroke-width: @node_border_width;
+        }
+        image {
+          width: 30px;
+          height: 30px;
+          clip-path: circle(50%);
+        }
+        .title {
+          fill: @node_title;
+        }
+        .svg-icon {
+          fill: @color_primary;
+        }
+        &.active {
+          .out-line {
+            fill: @node_bg_hover;
+            stroke: @node_bg_hover;
+          }
+          .svg-icon {
+            fill: @white;
+          }
+        }
+        &.no-active {
+          opacity: 0.3;
+        }
+        &.selected {
+          .ring {
+            opacity: 1;
+          }
+        }
+      }
+    }
+  }
+  .wrapper-tip {
+    .tip {
+      fill: #3a3a3a;
+      stroke-width: 2px;
+      &-text {
+        fill: @white;
+        font-size: 12px;
+      }
+    }
+  }
+  &.stop {
+    cursor: initial;
+  }
+}
