@@ -1,16 +1,16 @@
 export const nodes = [
   {
     id: '111',
-    name: '11'
+    name: '11',
   },
   {
     id: '2222',
-    name: '23'
+    name: '23',
   },
   {
     id: '236',
-    name: '9698'
-  }
+    name: '9698',
+  },
 ]
 export const links = [
   {
@@ -21,6 +21,6 @@ export const links = [
     target: '236',
     targetId: '236',
     linkType: '1-N',
-    tipInfo: {}
-  }
+    tipInfo: {},
+  },
 ]
