@@ -1,15 +1,15 @@
 export const nodes = [
   {
     id: '111',
-    name: '11',
+    name: '节点一',
   },
   {
     id: '2222',
-    name: '23',
+    name: '节点二',
   },
   {
     id: '236',
-    name: '9698',
+    name: '节点三',
   },
 ]
 export const links = [

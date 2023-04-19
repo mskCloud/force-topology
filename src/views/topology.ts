@@ -81,7 +81,12 @@ export default class Topology {
   private scaleMap: any
   public isLocateNode: Boolean
   public locateNodeId: string
-  constructor(el: string, nodes: Array<TopoNode>, links: Array<TopoLink>, config: TopoConfig) {
+  constructor(
+    el: string,
+    nodes: Array<TopoNode> = [],
+    links: Array<TopoLink> = [],
+    config: TopoConfig = {}
+  ) {
     this.el = el
     this.nodes = nodes
     this.links = links
@@ -197,9 +202,7 @@ export default class Topology {
       .attr('width', '100%')
       .attr('class', 'UxTopology')
       .on('click', function (event: Event) {
-        if (_this.cbList.has('right_Event_close')) {
-          _this.callBack('right_Event_close')
-        }
+        _this.callBack('right_Event_close')
       })
     this.svg.call(this.zoomFit()).on('dblclick.zoom', null)
     this.wrapper = this.svg.append('g').attr('class', 'wrapper')
@@ -223,9 +226,7 @@ export default class Topology {
       })
       // 解决右键之后在拖拽图片，删除按钮不消失问题
       .on('mousedown', function () {
-        if (_this.cbList.has('right_Event_close')) {
-          _this.callBack('right_Event_close')
-        }
+        _this.callBack('right_Event_close')
       })
       .on('contextmenu', function (event) {
         console.log('触发：节点右键事件')
@@ -242,6 +243,12 @@ export default class Topology {
     this.node.append('image').attr('xlink:href', function (d) {
       return d.img
     })
+    this.node
+      .append('text')
+      .attr('class', 'title')
+      .text(function (d) {
+        return d.name
+      })
     // 处理阴影相对 node 居中
     const rings = selectAll('#topology .ring')
     rings.each(function (this: SVGAElement) {
@@ -337,9 +344,7 @@ export default class Topology {
       })
       // 解决右键之后在拖拽图片，删除按钮不消失问题
       .on('mousedown', function () {
-        if (_this.cbList.has('right_Event_close')) {
-          _this.callBack('right_Event_close')
-        }
+        _this.callBack('right_Event_close')
       })
       .on('contextmenu', function (event) {
         console.log('触发：links右键事件')
@@ -495,9 +500,7 @@ export default class Topology {
           return v
         })
       )
-      if (_this.cbList.has('force_Tick_End')) {
-        _this.callBack('force_Tick_End')
-      }
+      _this.callBack('force_Tick_End')
     })
   }
 
@@ -608,9 +611,7 @@ export default class Topology {
         'transform',
         `translate(${event.transform.x}, ${event.transform.y}) scale(${event.transform.k})`
       )
-      if (_this.cbList.has('right_Event_close')) {
-        _this.callBack('right_Event_close')
-      }
+      _this.callBack('right_Event_close')
     }
     return zoomD3().on('zoom', zoom)
   }
@@ -745,9 +746,7 @@ export default class Topology {
     let rel_y = 0
     let speed = 2.2
 
-    if (_this.cbList.has('right_Event_close')) {
-      _this.callBack('right_Event_close')
-    }
+    _this.callBack('right_Event_close')
 
     function dragStart(event) {
       // 拖拽节点
@@ -804,13 +803,11 @@ export default class Topology {
         let end = _this.simulation.find(event.x, event.y, _this.radius)
         if (end) {
           linkTemp.attr('d', `M ${startLink_x} ${startLink_y} L ${end.x} ${end.y}`)
-          if (_this.cbList.has('_addLink')) {
-            _this.callBack('_addLink', {
-              source: event.subject,
-              target: end,
-              success: true,
-            })
-          }
+          _this.callBack('_addLink', {
+            source: event.subject,
+            target: end,
+            success: true,
+          })
         } else {
           linkTemp.remove()
         }
@@ -986,9 +983,7 @@ export default class Topology {
         }
       })
 
-      if (_this.cbList.has('_boxSelect')) {
-        _this.callBack('_boxSelect', _this.selectedNodes)
-      }
+      _this.callBack('_boxSelect', _this.selectedNodes)
     }
     return dragD3().on('start', dragStart).on('drag', drag).on('end', dragEnd)
   }
@@ -1044,6 +1039,40 @@ export default class Topology {
         }
       })
     }
+  }
+
+  // 卸载拓扑图
+
+  public unmountedTopology() {
+    this.stop()
+    this.el = ''
+    this.nodes = []
+    this.links = []
+    this.config = {}
+    this.box = null
+    this.container = null
+    this.svg = null
+    this.wrapper = null
+    this.wrapperNodes = null
+    this.wrapperLinks = null
+    this.simulation = null
+    this.node = null
+    this.link = null
+    this.linkLineOut = null
+    this.linkLineIn = null
+    this.linkLineText = null
+    this.radius = 20
+    this.selectedNodes = []
+    this.isStartTopology = true
+    this.isAddLink = false
+    this.isboxSelect = false
+    this.isNodeMove = true
+    this.isHighlight = false
+    this.isZoom = true
+    this.cbList = new Map()
+    this.scaleMap = { x: 0, y: 0, k: 1 }
+    this.isLocateNode = false
+    this.locateNodeId = ''
   }
 
   /**
