@@ -1,13 +1,10 @@
 import { deepCopy } from './tool'
 import {
   forceSimulation,
-  forceRadial,
   forceCenter,
   forceCollide,
   forceLink,
   forceManyBody,
-  forceX,
-  forceY,
   Simulation,
   SimulationLinkDatum,
   SimulationNodeDatum,
@@ -16,8 +13,7 @@ import {
 import { select, selectAll, Selection, BaseType } from 'd3-selection'
 import { zoom as zoomD3, zoomIdentity } from 'd3-zoom'
 import { xml } from 'd3-fetch'
-import { drag as dragD3, dragDisable, dragEnable } from 'd3-drag'
-import { transition } from 'd3-transition'
+import { drag as dragD3 } from 'd3-drag'
 
 interface TopoNode extends SimulationNodeDatum {
   id: string | number
@@ -70,17 +66,17 @@ export default class Topology {
   private linkLineIn: Selection<SVGPathElement, any, any, any>
   private linkLineText: Selection<SVGTextElement, any, any, any>
   private radius: number
-  public selectedNodes: Array<TopoNode>
-  public isStartTopology: Boolean
-  public isAddLink: Boolean
-  public isboxSelect: Boolean
-  public isNodeMove: Boolean
-  public isHighlight: Boolean
-  public isZoom: Boolean
-  private cbList: Map<String, Function>
+  private cbList: Map<string | symbol, Function>
   private scaleMap: any
-  public isLocateNode: Boolean
+  public selectedNodes: Array<TopoNode>
+  public isStartTopology: boolean
+  public isAddLink: boolean
+  public isboxSelect: boolean
+  public isHighlight: boolean
+  public isZoom: boolean
+  public isLocateNode: boolean
   public locateNodeId: string
+  public isFixedNode: boolean
   constructor(
     el: string,
     nodes: Array<TopoNode> = [],
@@ -118,8 +114,6 @@ export default class Topology {
     this.isAddLink = false
     // 是否可以框选
     this.isboxSelect = false
-    // 是否可以移动节点
-    this.isNodeMove = true
     // 是否高亮
     this.isHighlight = false
     // 是否可以画布移动和缩放
@@ -132,6 +126,8 @@ export default class Topology {
     this.isLocateNode = false
     // 定位节点id
     this.locateNodeId = ''
+    // 固定节点
+    this.isFixedNode = false
   }
   // 初始化拓扑图
   public init() {
@@ -159,10 +155,10 @@ export default class Topology {
         'collide',
         forceCollide()
           .radius(function (d) {
-            return 40
+            return 60
           })
           .strength(1)
-          .iterations(2)
+          .iterations(1)
       )
       .force(
         'charge',
@@ -175,7 +171,7 @@ export default class Topology {
       .force(
         'link',
         forceLink()
-          .distance(100)
+          .distance(50)
           .strength(1)
           .id(function (d: TopoNode) {
             return d.id
@@ -481,9 +477,6 @@ export default class Topology {
   }
 
   public updatedNodeAndLink() {
-    const _this = this
-    this.updatedNode()
-    this.updatedLink()
     this.simulation.nodes(this.nodes)
     this.simulation
       .force<ForceLink<TopoNode, TopoLink>>('link')
@@ -491,17 +484,8 @@ export default class Topology {
       .id(function id(d) {
         return d.id
       })
-    this.simulation.on('end', function () {
-      let n = _this.simulation.nodes()
-      _this.simulation.nodes(
-        n.map((v) => {
-          v.fx = v.x
-          v.fy = v.y
-          return v
-        })
-      )
-      _this.callBack('force_Tick_End')
-    })
+    this.updatedNode()
+    this.updatedLink()
   }
 
   private tick() {
@@ -621,7 +605,7 @@ export default class Topology {
    */
 
   // 更新Topology
-  public updateNodesAndLinks(nodes, links) {
+  public updateNodesAndLinks(nodes: Array<TopoNode>, links?: Array<TopoLink>) {
     this.simulation.stop()
     nodes && (this.nodes = [].concat(nodes))
     links && (this.links = [].concat(links))
@@ -655,14 +639,13 @@ export default class Topology {
   public stop() {
     this.simulation.stop()
     this.isStartTopology = false
-    this.isNodeMove = false
     select('.UxTopology').attr('class', 'UxTopology stop')
   }
+
   // 重新启动force活动
   public start() {
     this.simulation.restart()
     this.isStartTopology = true
-    this.isNodeMove = true
     this.isAddLink = false
     this.isboxSelect = false
     this.svg.call(this.zoomFit()).on('dblclick.zoom', null)
@@ -670,18 +653,13 @@ export default class Topology {
   }
 
   //  开启节点高亮显示
-  public openHightlight() {
-    this.isHighlight = true
-  }
-
-  public closeHightlight() {
-    this.isHighlight = false
+  public hightlight(isOpen?: boolean) {
+    this.isHighlight = isOpen === undefined ? !this.isHighlight : isOpen
   }
 
   //  添加连线
-  public addLinks(cb) {
+  public addLinks(cb: Function) {
     if (this.isStartTopology) return
-    this.isNodeMove = false
     this.isAddLink = true
     this.isZoom = true
     this.isboxSelect = false
@@ -690,7 +668,6 @@ export default class Topology {
 
   //  取消连线
   public addLinksCancel() {
-    this.isNodeMove = true
     this.isAddLink = false
     this.isZoom = true
     selectAll('#topology .temp').remove()
@@ -698,7 +675,7 @@ export default class Topology {
   }
 
   //  框选
-  public boxSelect(cb) {
+  public boxSelect(cb: Function) {
     if (this.isStartTopology) return
     this.isboxSelect = true
     this.isZoom = false
@@ -714,7 +691,6 @@ export default class Topology {
   public boxSelectCancel() {
     this.isboxSelect = false
     this.isZoom = true
-    this.isNodeMove = true
     this.selectedNodes = []
     this.node.each(function () {
       select(this).attr('class', 'node')
@@ -795,8 +771,10 @@ export default class Topology {
       if (!_this.isAddLink) {
         if (!event.active) _this.simulation.alphaTarget(0)
         // 固定节点
-        // event.subject.fx = null;
-        // event.subject.fy = null;
+        if (!_this.isFixedNode) {
+          event.subject.fx = null
+          event.subject.fy = null
+        }
       }
       // 添加连线
       if (_this.isAddLink) {
@@ -832,11 +810,22 @@ export default class Topology {
     return dragD3().on('start', dragStart).on('drag', drag).on('end', dragEnd)
   }
 
+  // 固定节点
+  public fixedNode(isFixed?: boolean) {
+    this.isFixedNode = isFixed === undefined ? !this.isFixedNode : isFixed
+    const n = this.simulation.nodes()
+    this.simulation.nodes(
+      n.map((v) => {
+        v.fx = this.isFixedNode ? v.x : null
+        v.fy = this.isFixedNode ? v.y : null
+        return v
+      })
+    )
+  }
+
   // 节点高亮
   private highlight(_this, open, nodeInfo = null) {
-    if (!this.isHighlight) {
-      return
-    }
+    if (!this.isHighlight) return
     let curNode = select(_this).datum() as TopoNode
     let id = curNode.id
     let linkId = []
@@ -1066,13 +1055,13 @@ export default class Topology {
     this.isStartTopology = true
     this.isAddLink = false
     this.isboxSelect = false
-    this.isNodeMove = true
     this.isHighlight = false
     this.isZoom = true
     this.cbList = new Map()
     this.scaleMap = { x: 0, y: 0, k: 1 }
     this.isLocateNode = false
     this.locateNodeId = ''
+    this.isFixedNode = false
   }
 
   /**
@@ -1155,26 +1144,22 @@ export default class Topology {
     return { start: startMap, end: endMap }
   }
 
-  //  回调函数
-  public callBack(name, ...arg) {
+  // 回调函数
+  public callBack<T>(name: string | symbol, ...arg: Array<T>) {
     if (this.cbList.has(name)) {
       if (this.cbList.get(name)) {
         this.cbList.get(name).call(this, ...arg)
       } else {
-        console.error(`${name}: 没有对应的回调函数`)
+        console.error(`${name.toString()}: 没有对应的回调函数`)
       }
     }
   }
-  /**
-   *  注册回调函数
-   *
-   * 注册右键事件时，请用right_Event命名
-   * */
-  public callBackRegister(name, cb) {
+  // 注册回调函数
+  public callBackRegister(name: string | symbol, cb: Function) {
     this.cbList.set(name, cb)
   }
-  //  清除回调函数
-  public callBackClear(name) {
+  // 清除回调函数
+  public callBackClear(name: string | symbol) {
     if (name) {
       this.cbList.delete(name)
       return
@@ -1183,6 +1168,7 @@ export default class Topology {
       return
     }
   }
+  // 坐标计算
   private rotation(source, target) {
     return (Math.atan2(target.y - source.y, target.x - source.x) * 180) / Math.PI
   }
@@ -1197,6 +1183,7 @@ export default class Topology {
     let ny = cos * (y - cy) - sin * (x - cx) + cy
     return { x: nx, y: ny }
   }
+  // 计算并生产 path
   private getLink_D(source, target, config_link) {
     let angle = this.rotation(source, target)
     let side = config_link.side || 0

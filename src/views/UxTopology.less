@@ -13,6 +13,10 @@
 @link_text_color: @black;
 @link_color_hover: @color_primary;
 
+:not(:root):fullscreen::backdrop {
+  background: white;
+}
+
 .UxTopology {
   cursor: move;
   .wrapper {
@@ -120,5 +124,6 @@
   }
   &.stop {
     cursor: initial;
+    background-color: #d9dada;
   }
 }
