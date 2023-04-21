@@ -8,11 +8,11 @@ import {
   Simulation,
   SimulationLinkDatum,
   SimulationNodeDatum,
-  ForceLink,
+  ForceLink
 } from 'd3-force'
 import { select, selectAll, Selection, BaseType } from 'd3-selection'
 import { zoom as zoomD3, zoomIdentity } from 'd3-zoom'
-import { xml } from 'd3-fetch'
+import { svg, blob } from 'd3-fetch'
 import { drag as dragD3 } from 'd3-drag'
 
 interface TopoNode extends SimulationNodeDatum {
@@ -37,13 +37,6 @@ interface TopoLinkData extends TopoLink {
   target: TopoNode
 }
 
-type TopoTipInfo = {
-  sourceName?: string
-  name?: string
-  targetName?: string
-  constraintRel?: string
-  directionType?: string
-}
 type TopoConfig = {}
 
 // 建议关闭 ts 的 strict 模式
@@ -54,7 +47,6 @@ export default class Topology {
   private links: Array<TopoLink>
   private config: TopoConfig
   private box: Selection<SVGAElement, any, any, any>
-  private container: Selection<SVGAElement, any, any, any>
   private svg: Selection<SVGSVGElement, any, any, any>
   private wrapper: Selection<SVGGElement, any, any, any>
   private wrapperNodes: Selection<SVGGElement, any, any, any>
@@ -89,7 +81,6 @@ export default class Topology {
     this.config = config
     // 容器
     this.box = null
-    this.container = null
     // 画布
     this.svg = null
     this.wrapper = null
@@ -105,7 +96,7 @@ export default class Topology {
     this.linkLineIn = null
     this.linkLineText = null
     // 节点半径
-    this.radius = 20
+    this.radius = 30
     // 被选中节点
     this.selectedNodes = []
     // 是否启动拓扑图（编辑）
@@ -149,56 +140,37 @@ export default class Topology {
 
   // 初始化力导模型
   private initSimulation() {
-    const _this = this
+    const centerX = this.svg.node().clientWidth / 2
+    const centerY = this.svg.node().clientHeight / 2
     this.simulation = forceSimulation<TopoNode, TopoLink>()
       .force(
         'collide',
         forceCollide()
-          .radius(function (d) {
-            return 60
-          })
-          .strength(1)
+          .radius(this.radius * 2)
+          .strength(0.7)
           .iterations(1)
       )
-      .force(
-        'charge',
-        forceManyBody()
-          .distanceMax(100)
-          .strength(function () {
-            return 1
-          })
-      )
+      .force('charge', forceManyBody().distanceMin(10).distanceMax(100).strength(30))
+      .force('center', forceCenter(centerX, centerY))
       .force(
         'link',
         forceLink()
-          .distance(50)
-          .strength(1)
-          .id(function (d: TopoNode) {
-            return d.id
-          })
+          .distance(100)
+          .strength(0.7)
+          .id((d: TopoNode) => d.id)
       )
-      .force(
-        'center',
-        forceCenter(
-          _this.wrapper.node().parentElement.parentElement.clientWidth / 2,
-          _this.wrapper.node().parentElement.parentElement.clientHeight / 2
-        )
-      )
-      .on('tick', function () {
-        _this.tick()
-      })
+      .on('tick', () => this.tick())
   }
 
   // 核心方法
   private appendSvg() {
-    const _this = this
     this.svg = this.box
       .append('svg')
       .attr('height', '100%')
       .attr('width', '100%')
-      .attr('class', 'UxTopology')
-      .on('click', function (event: Event) {
-        _this.callBack('right_Event_close')
+      .attr('class', 'topology-svg')
+      .on('click', () => {
+        this.callBack('right_Event_close')
       })
     this.svg.call(this.zoomFit()).on('dblclick.zoom', null)
     this.wrapper = this.svg.append('g').attr('class', 'wrapper')
@@ -232,63 +204,48 @@ export default class Topology {
   }
 
   private appendNodeClass() {
-    const _this = this
-    this.node.append('rect').attr('class', 'ring')
-    // .attr('r', this.radius * 1.25)
+    const imgWidth = this.radius * 1.5
+    const imgHeight = this.radius * 1.5
+    this.node
+      .append('rect')
+      .attr('class', 'ring')
+      .attr('width', this.radius * 2)
+      .attr('height', this.radius * 2)
+      .attr('x', `-${this.radius}px`)
+      .attr('y', `-${this.radius}px`)
     this.node.append('circle').attr('class', 'out-line').attr('r', this.radius)
-    this.node.append('image').attr('xlink:href', function (d) {
-      return d.img
-    })
     this.node
       .append('text')
       .attr('class', 'title')
-      .text(function (d) {
-        return d.name
-      })
-    // 处理阴影相对 node 居中
-    const rings = selectAll('#topology .ring')
-    rings.each(function (this: SVGAElement) {
-      let ring = select(this)
-      ring.attr('x', `-${ring.node().getBBox().width / 2}px`)
-      ring.attr('y', `-${ring.node().getBBox().height / 2}px`)
-    })
-    // 处理文字相对 node 居中
-    const texts = selectAll('#topology .title')
-    texts.each(function (d) {
-      let text = select(this)
-      // 指定文字水平居中
-      text.attr('text-anchor', 'middle')
-      text.attr('y', '40px')
-    })
-    // 处理图片居中
-    const images = selectAll('#topology image')
-    images.each(function (this: SVGAElement) {
-      let image = select(this)
-      image.attr('x', `-${image.node().getBBox().width / 2}px`)
-      image.attr('y', `-${image.node().getBBox().height / 2}px`)
-    })
-    // todo 之后优化节点中的图片或者icon逻辑
-    // 处理svg Icon居中（有svg图片时，删除image）
+      .attr('text-anchor', 'middle')
+      .attr('y', `${this.radius + 20}px`)
+      .text((d) => d.name)
+    // 处理图片以及svg
     this.node.each(function (d) {
       const node = select(this)
-      xml(d.img).then((res) => {
-        let svg = res.querySelector('svg')
-        if (svg) {
-          let pathList = svg.querySelectorAll('path')
-          pathList.forEach((item) => {
-            item.setAttribute('class', 'svg-icon')
+      blob(d.img).then((res) => {
+        if (['image/jpeg', 'image/jpg', 'image/png'].includes(res.type)) {
+          node
+            .append('image')
+            .attr('style', `width: ${imgWidth}px;height: ${imgHeight}px;`)
+            .attr('x', `-${imgWidth / 2}px`)
+            .attr('y', `-${imgHeight / 2}px`)
+            .attr('xlink:href', (d: TopoNode) => d.img)
+        }
+        if (res.type === 'image/svg+xml') {
+          svg(URL.createObjectURL(res)).then((res) => {
+            let svg = res.querySelector('svg')
+            if (svg) {
+              svg.setAttribute('width', `${imgWidth}px`)
+              svg.setAttribute('height', `${imgHeight}px`)
+              node
+                .append('g')
+                .attr('class', 'svg-icon')
+                .attr('transform', `translate(-${imgWidth / 2}, -${imgHeight / 2})`)
+                .node()
+                .append(svg)
+            }
           })
-          node.select('image').remove()
-          svg.setAttribute('height', '42px')
-          svg.setAttribute('width', '42px')
-          const icon = node.append('g').attr('class', 'svg-icon')
-          icon.node().append(svg)
-          node.select('title').remove()
-          const ring = node.select<SVGAElement>('.ring')
-          icon.attr(
-            'transform',
-            `translate(-${ring.node().getBBox().width / 2}, -${ring.node().getBBox().height / 2})`
-          )
         }
       })
     })
@@ -309,24 +266,19 @@ export default class Topology {
       .on('mouseover', function (event) {
         let x = event.offsetX + 16
         let y = event.offsetY + 16
-        let cur = select(this).select('.link-in').datum() as TopoTipInfo
-        const content = {
-          sourceName: cur.sourceName,
-          targetName: cur.targetName,
-          directionType: cur.directionType,
-          name: cur.name,
-          constraintRel: cur.constraintRel,
+        const linkData = select(this).select('.link-in').datum() as TopoLinkData
+        if (linkData.hasOwnProperty('tipInfo')) {
+          tip = _this.appendLinkTips(x, y, linkData.tipInfo)
         }
-        tip = _this.appendLinkTips(x, y, content)
       })
       .on('mouseout', function (event) {
-        tip.remove()
+        tip && tip.remove()
       })
       .on('mouseenter', function (event) {
-        let cur = select(this).select('.link-in').datum() as TopoLinkData
-        let sourceId = cur.source.id
-        let targetId = cur.target.id
-        let id = cur.id
+        const linkData = select(this).select('.link-in').datum() as TopoLinkData
+        let sourceId = linkData.source.id
+        let targetId = linkData.target.id
+        let id = linkData.id
         _this.highlight(this, true, { sourceId, targetId, id })
         if (!_this.isHighlight && !_this.isboxSelect) {
           select(this).attr('class', 'link active-link')
@@ -367,61 +319,40 @@ export default class Topology {
           return d.name
         })
     }
-
     return {
       linkOut: appendLinkOut(),
       linkIn: appendLinkIn(),
       linktext: appendLinkText(),
-      linkArrow: appendLinkArrow(),
+      linkArrow: appendLinkArrow()
     }
   }
-  // todo 提示需要封装到单独的组件里
-  private appendLinkTips(x, y, content) {
+
+  private appendLinkTips(x: number, y: number, content: Object) {
+    const tipInfo = Object.keys(content)
+    if (!tipInfo.length) return
+    let tipWidth = 150
+    let tipHeight = 90
     const tip = this.svg.append('g').attr('class', 'wrapper-tip')
     tip
       .append('rect')
       .attr('class', 'tip')
-      .attr('width', 150)
-      .attr('height', 90)
+      .attr('width', tipWidth)
+      .attr('height', tipHeight)
       .attr('x', x)
       .attr('y', y)
       .attr('rx', 4)
       .attr('ry', 4)
-    tip
-      .append('text')
-      .attr('class', 'tip-text')
-      .attr('x', x + 10)
-      .attr('y', y + 20)
-      .text(function (d) {
-        return `起点名称：${content.sourceName}`
-      })
-    tip
-      .append('text')
-      .attr('class', 'tip-text')
-      .attr('x', x + 10)
-      .attr('y', y + 40)
-      .text(function (d) {
-        return `关系类型：${content.name}`
-      })
-    tip
-      .append('text')
-      .attr('class', 'tip-text')
-      .attr('x', x + 10)
-      .attr('y', y + 60)
-      .text(function (d) {
-        return `终点名称：${content.targetName}`
-      })
-    tip
-      .append('text')
-      .attr('class', 'tip-text')
-      .attr('x', x + 10)
-      .attr('y', y + 80)
-      .text(function (d) {
-        return `起点=>终点：${content.constraintRel}`
-      })
+    Object.keys(content).map((key, index) => {
+      tip
+        .append('text')
+        .attr('class', 'tip-text')
+        .attr('x', x + 10)
+        .attr('y', y + 20 * (index + 1))
+        .text(function (d) {
+          return `${key}：${content[key]}`
+        })
+    })
     // 处理tip的宽度问题
-    let tipWidth = 150
-    let tipHeight = 90
     selectAll('#topology .tip-text').each(function (this: SVGTextElement) {
       let width = select(this).node().getBBox().width
       if (width > tipWidth) {
@@ -516,15 +447,15 @@ export default class Topology {
 
         const config_link = {
           // 箭头大小
-          side: 2,
+          side: 4,
           // 线的宽度
           linkWidth: 2,
-          textGap: 4,
+          textGap: 6,
           lineLength: 0,
           textWidth: link_text.node().getBBox().width,
           textHeight: link_text.node().getBBox().height,
           angle: 0,
-          type: 'N-N',
+          type: 'N-N'
         }
 
         if (!['1-1', '1-N', 'N-1', 'N-N'].includes(config_link.type)) {
@@ -534,7 +465,6 @@ export default class Topology {
         link_out.attr('d', function (d: TopoLinkData) {
           return `M ${d.source.x} ${d.source.y} L ${d.target.x} ${d.target.y}`
         })
-        // todo 不记得为什么有这段重复的代码，待研究
         // link_arrow.attr('d', function (d) {
         //   if (d.source.id === d.target.id) {
         //     config_link.type = d.linkType
@@ -586,18 +516,16 @@ export default class Topology {
     const _this = this
     function zoom(event) {
       if (!_this.isZoom && !flag) return
-
       _this.scaleMap.x = event.transform.x
       _this.scaleMap.y = event.transform.y
       _this.scaleMap.k = event.transform.k
-
       _this.wrapper.attr(
         'transform',
         `translate(${event.transform.x}, ${event.transform.y}) scale(${event.transform.k})`
       )
       _this.callBack('right_Event_close')
     }
-    return zoomD3().on('zoom', zoom)
+    return zoomD3().scaleExtent([0.4, 3]).on('zoom', zoom)
   }
 
   /**
@@ -639,7 +567,7 @@ export default class Topology {
   public stop() {
     this.simulation.stop()
     this.isStartTopology = false
-    select('.UxTopology').attr('class', 'UxTopology stop')
+    select('.topology-svg').attr('class', 'topology-svg stop')
   }
 
   // 重新启动force活动
@@ -649,7 +577,7 @@ export default class Topology {
     this.isAddLink = false
     this.isboxSelect = false
     this.svg.call(this.zoomFit()).on('dblclick.zoom', null)
-    select('.UxTopology').attr('class', 'UxTopology')
+    select('.topology-svg').attr('class', 'topology-svg')
   }
 
   //  开启节点高亮显示
@@ -784,7 +712,7 @@ export default class Topology {
           _this.callBack('_addLink', {
             source: event.subject,
             target: end,
-            success: true,
+            success: true
           })
         } else {
           linkTemp.remove()
@@ -977,7 +905,7 @@ export default class Topology {
     return dragD3().on('start', dragStart).on('drag', drag).on('end', dragEnd)
   }
 
-  //  全屏
+  // 全屏
   public fullScreen() {
     let el: any = document.querySelector(this.el)
     let rfs =
@@ -1010,7 +938,7 @@ export default class Topology {
       )
   }
 
-  // 设置当前配置项高亮
+  // 设置当前节点高亮
   public setNodeHeightLightById(nodeId) {
     if (nodeId) {
       const _this = this
@@ -1018,7 +946,6 @@ export default class Topology {
       this.node.each(function (d) {
         if (d.id === nodeId) {
           if (_this.isLocateNode) {
-            // _this.locateNode(d)
             _this.isLocateNode = false
           }
           select(this)
@@ -1031,7 +958,6 @@ export default class Topology {
   }
 
   // 卸载拓扑图
-
   public unmountedTopology() {
     this.stop()
     this.el = ''
@@ -1039,7 +965,6 @@ export default class Topology {
     this.links = []
     this.config = {}
     this.box = null
-    this.container = null
     this.svg = null
     this.wrapper = null
     this.wrapperNodes = null

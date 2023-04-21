@@ -1,18 +1,21 @@
 <template>
-  <div style="display: flex; margin-bottom: 16px">
-    <button
-      class="btn"
-      v-for="item in List"
-      :key="item.key"
-      :style="{
-        backgroundColor: item.value ? 'red' : 'initial',
-      }"
-      @click="handleEvent(item)"
-    >
-      {{ item.label }}
-    </button>
+  <div class="wrapper">
+    <header>
+      <button
+        class="btn"
+        v-for="item in List"
+        :key="item.key"
+        :style="{
+          backgroundColor: item.value ? '#ff6b81' : '',
+          color: item.value ? '#f1f2f6' : '',
+        }"
+        @click="handleEvent(item)"
+      >
+        {{ item.label }}
+      </button>
+    </header>
+    <div id="topology"></div>
   </div>
-  <div id="topology" style="height: 600px; border: 10px solid #000"></div>
 </template>
 
 <script setup lang="ts">
@@ -37,11 +40,11 @@ const List = ref<Array<Item>>([
   { label: '节点高亮', key: 'hightlight', value: false },
   { label: '全屏', key: 'fullscreen', value: false },
 ])
-
-onMounted(() => {
+if (!nodes.length && !links.length) {
   nodes.push(...generateNode(10))
   links.push(...generateLink(10))
-
+}
+onMounted(() => {
   topology.value = new Topology('#topology', nodes, links, {})
   topology.value.init()
 })
@@ -113,12 +116,35 @@ function handleEvent(item: Item) {
 </script>
 
 <style lang="less">
-@import './UxTopology.less';
-
-.btn {
-  height: 32px;
-  min-width: 80px;
-  padding: 0 4px;
-  cursor: pointer;
+@import './topology.less';
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  min-width: 820px;
+  height: 100vh;
+  background-color: #bdc3c7;
+  overflow: hidden;
+  header {
+    display: flex;
+    justify-content: center;
+    .btn {
+      height: 40px;
+      min-width: 80px;
+      padding: 0 4px;
+      color: #57606f;
+      background-color: transparent;
+      border-color: transparent;
+      cursor: pointer;
+      &:hover {
+        color: #f1f2f6;
+      }
+    }
+  }
+  #topology {
+    flex-grow: 1;
+    margin: 0 80px 80px 80px;
+    border: 16px solid #95a5a6;
+    border-radius: 4px;
+  }
 }
 </style>

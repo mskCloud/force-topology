@@ -1,4 +1,7 @@
+import svg from '../assets/vue.svg'
+import img from '../assets/7.jpg'
 export const nodes = []
+
 export const links = []
 
 export function generateNode(nums: number = 1) {
@@ -9,6 +12,7 @@ export function generateNode(nums: number = 1) {
     temp.push({
       id: `id_${count}`,
       name: `Node_${count}`,
+      img: count % 2 ? svg : img,
     })
   }
   return temp
@@ -35,7 +39,13 @@ export function generateLink(nums: number = 1) {
       target: `id_${b}`,
       targetId: `id_${b}`,
       linkType: type[c],
-      tipInfo: {},
+      tipInfo: {
+        id: `id is link_${count}`,
+        name: `name is 关系：${a}=>${b}`,
+        source: `source is id_${a}`,
+        target: `target is id_${b}`,
+        linkType: `linkType is ${type[c]}`,
+      },
     })
   }
   return temp
@@ -51,6 +61,12 @@ export function generateLinkById(source: string, target: string, type: string = 
     target: target,
     targetId: target,
     linkType: type,
-    tipInfo: {},
+    tipInfo: {
+      id: `id is link_${links.length}`,
+      name: `name is 关系：${source}=>${target}`,
+      source: `source is ${source}`,
+      target: `target is ${target}`,
+      linkType: `linkType is ${type}`,
+    },
   }
 }

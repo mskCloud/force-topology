@@ -1,14 +1,14 @@
 @black: #000;
 @white: #fff;
-@color_primary: #5b8bff;
+@color_primary: #ff6b81;
 
 @node_bg: @white;
 @node_border: @color_primary;
-@node_border_width: 2px;
+@node_border_width: 4px;
 @node_title: #262626;
-@node_bg_hover: #69d5e8;
+@node_bg_hover: #ff6b81;
 
-@link_color: #abd1d9;
+@link_color: #1e90ff;
 @link_width: 2px;
 @link_text_color: @black;
 @link_color_hover: @color_primary;
@@ -17,8 +17,11 @@
   background: white;
 }
 
-.UxTopology {
+.topology-svg {
   cursor: move;
+  background-color: white;
+  min-width: 100px;
+  min-height: 100px;
   .wrapper {
     &-links {
       color: @link_color;
@@ -34,7 +37,7 @@
           stroke-width: 1px;
         }
         &-text {
-          font-size: 8px;
+          font-size: 12px;
           fill: @link_text_color;
         }
         &-arrow {
@@ -69,8 +72,6 @@
       .node {
         cursor: pointer;
         .ring {
-          width: 42px;
-          height: 42px;
           fill: #e056fd;
           stroke: transparent;
           opacity: 0;
