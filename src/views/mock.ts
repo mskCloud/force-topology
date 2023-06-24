@@ -1,10 +1,11 @@
+import { links, nodes } from './../../../knower/src/views/D3/mock'
 import svg from '../assets/vue.svg'
 import img from '../assets/7.jpg'
-export const nodes = []
+// export const nodes = []
 
-export const links = []
+// export const links = []
 
-export function generateNode(nums: number = 1) {
+export function generateNode(nums: number = 1, nodes: any) {
   const temp = []
   let count = nodes.length
   for (let i = 0; i < nums; i++) {
@@ -12,13 +13,13 @@ export function generateNode(nums: number = 1) {
     temp.push({
       id: `id_${count}`,
       name: `Node_${count}`,
-      img: count % 2 ? svg : img,
+      img: count % 2 ? svg : img
     })
   }
   return temp
 }
 
-export function generateLink(nums: number = 1) {
+export function generateLink(nums: number = 1, links: any, nodes?: any) {
   const temp = []
   let count = links.length
   const type = ['1-1,1-N', 'N-1', 'N-N']
@@ -44,14 +45,14 @@ export function generateLink(nums: number = 1) {
         name: `name is 关系：${a}=>${b}`,
         source: `source is id_${a}`,
         target: `target is id_${b}`,
-        linkType: `linkType is ${type[c]}`,
-      },
+        linkType: `linkType is ${type[c]}`
+      }
     })
   }
   return temp
 }
 
-export function generateLinkById(source: string, target: string, type: string = '1-N') {
+export function generateLinkById(links: any,source: string, target: string, type: string = '1-N') {
   return {
     id: `link_${links.length}`,
     index: links.length,
@@ -66,7 +67,7 @@ export function generateLinkById(source: string, target: string, type: string = 
       name: `name is 关系：${source}=>${target}`,
       source: `source is ${source}`,
       target: `target is ${target}`,
-      linkType: `linkType is ${type}`,
-    },
+      linkType: `linkType is ${type}`
+    }
   }
 }

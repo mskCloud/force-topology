@@ -1,52 +1,62 @@
 <template>
   <div class="wrapper">
-    <header>
-      <button
-        class="btn"
-        v-for="item in List"
-        :key="item.key"
-        :style="{
-          backgroundColor: item.value ? '#ff6b81' : '',
-          color: item.value ? '#f1f2f6' : '',
-        }"
-        @click="handleEvent(item)"
-      >
-        {{ item.label }}
-      </button>
-    </header>
-    <div id="topology"></div>
+    <Options ref="optionsRef" @handle-event="handleEvent" />
+    <main>
+      <Info :data="status"></Info>
+      <div id="topology" />
+    </main>
+    <DataPane :node-data="nodes" :link-data="links" :config-data="topologyConfig" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { nodes, links, generateNode, generateLink, generateLinkById } from './mock'
+import { ref, watch, watchEffect, onMounted, onUnmounted } from 'vue'
+import { generateNode, generateLink, generateLinkById } from './mock'
 import Topology from './topology'
+import Options from './Options.vue'
+import DataPane from './DataPane.vue'
+import Info from './Info.vue'
 
-type Item = {
-  label: string
-  key: string
-  value?: any
-}
+const nodes = ref([])
+const links = ref([])
 const topology = ref<Topology | null>(null)
-const List = ref<Array<Item>>([
-  { label: '编辑模式', key: 'isEdit', value: false },
-  { label: '固定节点', key: 'fixed', value: false },
-  { label: '重新生成节点', key: 'reset' },
-  { label: '添加节点', key: 'addNode' },
-  // { label: '删除节点', key: 'delNode' },
-  { label: '连线', key: 'openLink', value: false },
-  { label: '框选', key: 'openSelect', value: false },
-  { label: '节点高亮', key: 'hightlight', value: false },
-  { label: '全屏', key: 'fullscreen', value: false },
-])
-if (!nodes.length && !links.length) {
-  nodes.push(...generateNode(10))
-  links.push(...generateLink(10))
+const optionsRef = ref()
+const topologyConfig = ref({
+  configNode: {
+    font: '12',
+    radius: 30
+  },
+  configLink: {
+    side: 4,
+    linkWidth: 2,
+    textGap: 6,
+    lineLength: 0,
+  }
+})
+const status = ref({
+  状态1: '预览中',
+  状态2: '',
+  状态3: '',
+  状态4: '',
+  状态5: '',
+})
+
+if (!nodes.value.length && !links.value.length) {
+  nodes.value.push(...generateNode(10, nodes.value))
+  links.value.push(...generateLink(10, links.value, nodes.value))
 }
+
 onMounted(() => {
-  topology.value = new Topology('#topology', nodes, links, {})
+  topology.value = new Topology('#topology', nodes.value, links.value, topologyConfig.value)
   topology.value.init()
+
+  watchEffect(() => {
+    status.value.状态1 = optionsRef.value.isEdit ? '编辑中' : '预览中'
+    status.value.状态2 = optionsRef.value.isLink ? '连线中' : ''
+    status.value.状态3 = optionsRef.value.isSelect ? '框选中' : ''
+    status.value.状态4 = optionsRef.value.isHghtlight ? '节点高亮中' : ''
+    status.value.状态5 = optionsRef.value.isFixed ? '节点固定中' : ''
+  })
 })
 
 onUnmounted(() => {
@@ -58,41 +68,47 @@ function handleEvent(item: Item) {
     item.value ? topology.value.start() : topology.value.stop()
     item.value = !item.value
   }
+
   if (item.key === 'fixed') {
     item.value = !item.value
     topology.value.fixedNode(item.value)
   }
+
   if (item.key === 'reset') {
-    nodes.length = 0
-    links.length = 0
-    nodes.push(...generateNode(10))
-    links.push(...generateLink(10))
-    topology.value.updateNodesAndLinks(nodes, links)
+    nodes.value.length = 0
+    links.value.length = 0
+    nodes.value.push(...generateNode(10, nodes.value))
+    links.value.push(...generateLink(10, links.value, nodes.value))
+    topology.value.updateNodesAndLinks(nodes.value, links.value)
   }
+
   if (item.key === 'addNode') {
-    nodes.push(...generateNode(4))
-    links.push(...generateLink(4))
-    topology.value.updateNodesAndLinks(nodes, links)
+    nodes.value.push(...generateNode(4, nodes.value))
+    links.value.push(...generateLink(4, links.value, nodes.value))
+    topology.value.updateNodesAndLinks(nodes.value, links.value)
   }
+
   if (item.key === 'delNode') {
   }
+
   if (item.key === 'openLink') {
-    if (!List.value.find((item) => item.key === 'isEdit').value) {
+    if (!optionsRef.value.isEdit) {
       alert('请先打开编辑模式')
       return
     }
     item.value = !item.value
     if (item.value) {
       topology.value.addLinks((res) => {
-        links.push(generateLinkById(res.source.id, res.target.id))
-        topology.value.updateNodesAndLinks(nodes, links)
+        links.value.push(generateLinkById(links.value, res.source.id, res.target.id))
+        topology.value.updateNodesAndLinks(nodes.value, links.value)
       })
     } else {
       topology.value.addLinksCancel()
     }
   }
+
   if (item.key === 'openSelect') {
-    if (!List.value.find((item) => item.key === 'isEdit').value) {
+    if (!optionsRef.value.isEdit) {
       alert('请先打开编辑模式')
       return
     }
@@ -105,10 +121,12 @@ function handleEvent(item: Item) {
       topology.value.boxSelectCancel()
     }
   }
+
   if (item.key === 'hightlight') {
     item.value = !item.value
     topology.value.hightlight(item.value)
   }
+
   if (item.key === 'fullscreen') {
     topology.value.fullScreen()
   }
@@ -119,32 +137,16 @@ function handleEvent(item: Item) {
 @import './topology.less';
 .wrapper {
   display: flex;
-  flex-direction: column;
-  min-width: 820px;
   height: 100vh;
-  background-color: #bdc3c7;
-  overflow: hidden;
-  header {
+  main {
+    flex: 1;
     display: flex;
-    justify-content: center;
-    .btn {
-      height: 40px;
-      min-width: 80px;
-      padding: 0 4px;
-      color: #57606f;
-      background-color: transparent;
-      border-color: transparent;
-      cursor: pointer;
-      &:hover {
-        color: #f1f2f6;
-      }
+    flex-direction: column;
+    #topology {
+      flex: 1;
+      border: 16px solid #95a5a6;
+      border-radius: 4px;
     }
-  }
-  #topology {
-    flex-grow: 1;
-    margin: 0 80px 80px 80px;
-    border: 16px solid #95a5a6;
-    border-radius: 4px;
   }
 }
 </style>

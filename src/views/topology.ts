@@ -14,6 +14,7 @@ import { select, selectAll, Selection, BaseType } from 'd3-selection'
 import { zoom as zoomD3, zoomIdentity } from 'd3-zoom'
 import { svg, blob } from 'd3-fetch'
 import { drag as dragD3 } from 'd3-drag'
+// 建议关闭 ts 的 strict 模式
 
 interface TopoNode extends SimulationNodeDatum {
   id: string | number
@@ -38,8 +39,6 @@ interface TopoLinkData extends TopoLink {
 }
 
 type TopoConfig = {}
-
-// 建议关闭 ts 的 strict 模式
 
 export default class Topology {
   private el: string
