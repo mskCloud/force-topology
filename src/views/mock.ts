@@ -1,4 +1,5 @@
-import { links, nodes } from './../../../knower/src/views/D3/mock'
+// import { links, nodes } from './../../../knower/src/views/D3/mock'
+import { TopoNode, TopoLinkRaw } from './topology'
 import svg from '../assets/vue.svg'
 import img from '../assets/7.jpg'
 // export const nodes = []
@@ -6,21 +7,23 @@ import img from '../assets/7.jpg'
 // export const links = []
 
 export function generateNode(nums: number = 1, nodes: any) {
-  const temp = []
+  const temp: TopoNode[] = []
   let count = nodes.length
   for (let i = 0; i < nums; i++) {
     count++
     temp.push({
       id: `id_${count}`,
       name: `Node_${count}`,
-      img: count % 2 ? svg : img
+      img: count % 2 ? svg : img,
+      x: 0,
+      y: 0
     })
   }
   return temp
 }
 
 export function generateLink(nums: number = 1, links: any, nodes?: any) {
-  const temp = []
+  const temp: TopoLinkRaw[] = []
   let count = links.length
   const type = ['1-1,1-N', 'N-1', 'N-N']
   for (let i = 0; i < nums; i++) {
@@ -36,9 +39,7 @@ export function generateLink(nums: number = 1, links: any, nodes?: any) {
       id: `link_${count}`,
       name: `关系：${a}=>${b}`,
       source: `id_${a}`,
-      sourceId: `id_${a}`,
       target: `id_${b}`,
-      targetId: `id_${b}`,
       linkType: type[c],
       tipInfo: {
         id: `id is link_${count}`,
@@ -52,7 +53,7 @@ export function generateLink(nums: number = 1, links: any, nodes?: any) {
   return temp
 }
 
-export function generateLinkById(links: any,source: string, target: string, type: string = '1-N') {
+export function generateLinkById(links: any, source: string, target: string, type: string = '1-N') {
   return {
     id: `link_${links.length}`,
     index: links.length,

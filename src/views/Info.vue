@@ -10,8 +10,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+
+type ObjStr = {
+  [key: string]: any
+}
+
 const props = defineProps<{
-  data?: Object
+  data: ObjStr
 }>()
 
 const list = computed(() =>

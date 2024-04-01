@@ -29,14 +29,15 @@ const List = ref<Array<Item>>([
   { label: '连线', key: 'openLink', value: false },
   { label: '框选', key: 'openSelect', value: false },
   { label: '节点高亮', key: 'hightlight', value: false },
-  { label: '全屏', key: 'fullscreen', value: false }
+  { label: '全屏', key: 'fullscreen', value: false },
+  { label: '临时', key: 'temp', value: false }
 ])
 
-const isEdit = computed(() => List.value.find((f) => f.key === 'isEdit').value)
-const isLink = computed(() => List.value.find((f) => f.key === 'openLink').value)
-const isSelect = computed(() => List.value.find((f) => f.key === 'openSelect').value)
-const isHghtlight = computed(() => List.value.find((f) => f.key === 'hightlight').value)
-const isFixed = computed(() => List.value.find((f) => f.key === 'fixed').value)
+const isEdit = computed(() => List.value.find((f) => f.key === 'isEdit')?.value)
+const isLink = computed(() => List.value.find((f) => f.key === 'openLink')?.value)
+const isSelect = computed(() => List.value.find((f) => f.key === 'openSelect')?.value)
+const isHghtlight = computed(() => List.value.find((f) => f.key === 'hightlight')?.value)
+const isFixed = computed(() => List.value.find((f) => f.key === 'fixed')?.value)
 
 function handleEmit(eventItem: Item) {
   if (eventItem.key === 'isEdit') {

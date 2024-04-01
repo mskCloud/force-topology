@@ -10,16 +10,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, watchEffect, onMounted, onUnmounted } from 'vue'
+import { ref,shallowRef, watchEffect, onMounted, onUnmounted } from 'vue'
 import { generateNode, generateLink, generateLinkById } from './mock'
 import Topology from './topology'
+import { TopoNode, TopoLinkRaw, TopoLinkData } from './topology'
 import Options from './Options.vue'
 import DataPane from './DataPane.vue'
 import Info from './Info.vue'
 
-const nodes = ref([])
-const links = ref([])
-const topology = ref<Topology | null>(null)
+const nodes = ref<TopoNode[]>([])
+const links = ref<TopoLinkRaw[]>([])
+const topology = shallowRef<Topology | null>(null)
 const optionsRef = ref()
 const topologyConfig = ref({
   configNode: {
@@ -30,7 +31,7 @@ const topologyConfig = ref({
     side: 4,
     linkWidth: 2,
     textGap: 6,
-    lineLength: 0,
+    lineLength: 0
   }
 })
 const status = ref({
@@ -38,7 +39,7 @@ const status = ref({
   状态2: '',
   状态3: '',
   状态4: '',
-  状态5: '',
+  状态5: ''
 })
 
 if (!nodes.value.length && !links.value.length) {
@@ -60,18 +61,18 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  topology.value.unmountedTopology()
+  topology.value?.unmountedTopology()
 })
 
 function handleEvent(item: Item) {
   if (item.key === 'isEdit') {
-    item.value ? topology.value.start() : topology.value.stop()
+    item.value ? topology.value?.start() : topology.value?.stop()
     item.value = !item.value
   }
 
   if (item.key === 'fixed') {
     item.value = !item.value
-    topology.value.fixedNode(item.value)
+    topology.value?.fixedNode(item.value)
   }
 
   if (item.key === 'reset') {
@@ -79,13 +80,13 @@ function handleEvent(item: Item) {
     links.value.length = 0
     nodes.value.push(...generateNode(10, nodes.value))
     links.value.push(...generateLink(10, links.value, nodes.value))
-    topology.value.updateNodesAndLinks(nodes.value, links.value)
+    topology.value?.updateNodesAndLinks(nodes.value, links.value)
   }
 
   if (item.key === 'addNode') {
     nodes.value.push(...generateNode(4, nodes.value))
     links.value.push(...generateLink(4, links.value, nodes.value))
-    topology.value.updateNodesAndLinks(nodes.value, links.value)
+    topology.value?.updateNodesAndLinks(nodes.value, links.value)
   }
 
   if (item.key === 'delNode') {
@@ -98,12 +99,12 @@ function handleEvent(item: Item) {
     }
     item.value = !item.value
     if (item.value) {
-      topology.value.addLinks((res) => {
+      topology.value?.addLinks((res: TopoLinkData) => {
         links.value.push(generateLinkById(links.value, res.source.id, res.target.id))
-        topology.value.updateNodesAndLinks(nodes.value, links.value)
+        topology.value?.updateNodesAndLinks(nodes.value, links.value)
       })
     } else {
-      topology.value.addLinksCancel()
+      topology.value?.addLinksCancel()
     }
   }
 
@@ -114,21 +115,24 @@ function handleEvent(item: Item) {
     }
     item.value = !item.value
     if (item.value) {
-      topology.value.boxSelect((res) => {
+      topology.value?.boxSelect((res: TopoNode[]) => {
         console.log(res)
       })
     } else {
-      topology.value.boxSelectCancel()
+      topology.value?.boxSelectCancel()
     }
   }
 
   if (item.key === 'hightlight') {
     item.value = !item.value
-    topology.value.hightlight(item.value)
+    topology.value?.hightlight(item.value)
   }
 
   if (item.key === 'fullscreen') {
-    topology.value.fullScreen()
+    topology.value?.fullScreen()
+  }
+  if (item.key === 'temp') {
+    topology.value?.getViewPortSize()
   }
 }
 </script>
