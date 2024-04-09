@@ -1,7 +1,6 @@
 <template>
   <ul class="wrapper-opt">
     <li
-      class="btn"
       v-for="item in List"
       :key="item.key"
       :style="{
@@ -60,19 +59,28 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex-basis: 7rem;
+  width: 7rem;
   list-style: none;
-  font-size: 14px;
-  .btn {
-    width: 100%;
+  font-size: 1rem;
+  li {
+    // width: 100%;
+    padding: 0 0.3rem;
     line-height: 32px;
     text-align: center;
     color: #57606f;
     cursor: pointer;
+    text-wrap: nowrap;
     &:hover {
       color: #2ed573;
       background-color: rgba(10, 10, 10, 0.1);
     }
+  }
+}
+@media screen and (max-width: 400px) {
+  .wrapper-opt {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 }
 </style>

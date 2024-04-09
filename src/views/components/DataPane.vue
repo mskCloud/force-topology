@@ -58,7 +58,7 @@ function optDataPane(type: string, node: TopoNode) {
 
 <style scoped lang="less">
 .wrapper-data {
-  width: 15rem;
+  max-width: 15rem;
   padding: 0 1rem 0 1.5rem;
   overflow: auto;
   ol,
@@ -75,6 +75,12 @@ function optDataPane(type: string, node: TopoNode) {
         }
       }
     }
+  }
+}
+
+@media screen and (max-width: 400px) {
+  h3 {
+    font-size: 1rem;
   }
 }
 </style>

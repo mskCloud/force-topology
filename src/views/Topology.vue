@@ -153,11 +153,19 @@ function handleDataPaneOpt(type: string, node: TopoNode) {
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-width: 50%;
     #topology {
       flex: 1;
       border: 16px solid #95a5a6;
       border-radius: 4px;
     }
+  }
+}
+
+@media screen and (max-width: 400px) {
+  .wrapper {
+    // height: auto;
+    flex-direction: column;
   }
 }
 </style>
