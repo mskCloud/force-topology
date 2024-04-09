@@ -20,12 +20,12 @@ import { ref, computed } from 'vue'
 
 const emit = defineEmits(['handleEvent'])
 
-const List = ref<Array<Item>>([
+const List = ref<Item[]>([
   { label: '编辑模式', key: 'isEdit', value: false },
   { label: '固定节点', key: 'fixed', value: false },
   { label: '重新生成节点', key: 'reset' },
   { label: '添加节点', key: 'addNode' },
-  // { label: '删除节点', key: 'delNode' },
+  { label: '删除节点', key: 'delNode' },
   { label: '连线', key: 'openLink', value: false },
   { label: '框选', key: 'openSelect', value: false },
   { label: '节点高亮', key: 'hightlight', value: false },
@@ -60,8 +60,9 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex-basis: 200px;
+  flex-basis: 7rem;
   list-style: none;
+  font-size: 14px;
   .btn {
     width: 100%;
     line-height: 32px;
@@ -70,6 +71,7 @@ defineExpose({
     cursor: pointer;
     &:hover {
       color: #2ed573;
+      background-color: rgba(10, 10, 10, 0.1);
     }
   }
 }

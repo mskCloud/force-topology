@@ -1,4 +1,3 @@
-import { deepCopy } from './tool'
 import {
   forceSimulation,
   forceCenter,
@@ -17,8 +16,6 @@ import { drag as dragD3, D3DragEvent } from 'd3-drag'
 
 // import D3 from 'd3'
 
-// 建议关闭 ts 的 strict 模式
-
 type ObjString = {
   [key: string]: any
 }
@@ -29,14 +26,21 @@ type Point = {
 type LinkConfig = {
   side: number
   lineWidth: number
-  textGap: number
   lineLength: number
+  textGap: number
   textWidth: number
   textHeight: number
   angle: number
   type: string | 'N-N' | '1-N' | 'N-1' | '1-1'
 }
-type TopoConfig = {}
+
+export type TopoConfig = {
+  node_radius?: number
+  lineWidth?: number
+  fontSize?: number
+  textGap?: number
+  side?: number
+}
 
 export interface TopoNode extends SimulationNodeDatum {
   id: string
@@ -83,7 +87,8 @@ export default class Topology {
   private radius: number
   private cbList: Map<string | symbol, Function>
   private scaleMap: any
-  public selectedNodes: Array<TopoNode> | null
+  public selectedNodes: TopoNode[] | []
+  public selectedLinks: TopoLink[] | []
   public isStartTopology: boolean
   public isAddLink: boolean
   public isboxSelect: boolean
@@ -99,8 +104,9 @@ export default class Topology {
     this.config = config
     // 容器
     this.container = null
-    // 画布
+    // 视口
     this.viewport = null
+    // 画布
     this.wrapper = null
     this.wrapperNodes = null
     this.wrapperLinks = null
@@ -115,8 +121,9 @@ export default class Topology {
     this.linkLineText = null
     // 节点半径
     this.radius = 30
-    // 被选中节点
+    // 被选中节点以及连线
     this.selectedNodes = []
+    this.selectedLinks = []
     // 是否启动拓扑图（编辑）
     this.isStartTopology = true
     // 是否可以连线
@@ -169,7 +176,7 @@ export default class Topology {
       .force(
         'collide',
         forceCollide()
-          .radius(this.radius * 2)
+          .radius(this.radius * 3)
           .strength(0.7)
           .iterations(1)
       )
@@ -947,10 +954,9 @@ export default class Topology {
         findEnd.x = start_x
         findEnd.y = start_y
       }
+
       // 当前被圈中的节点
       selectedNodes = _this.findNodesByBox(findStart, findEnd)
-      // 当前所有被圈中的节点
-      // selectedNodes = _this.findNodeBySelectBox(selectedNodes, _this.selectedNodes)
 
       // 设置选中节点样式
       _this.nodeTotal?.each(function () {
@@ -982,6 +988,7 @@ export default class Topology {
     function dragEnd() {
       selectAll('#topology .temp').remove()
       _this.selectedNodes = selectedNodes
+      _this.selectedLinks = _this.findLinksByNodes(_this.selectedNodes)
       _this.isZoom = false
       _this.nodeTotal?.each(function (d) {
         if (_this.selectedNodes?.find((v) => v.id === d.id)) {
@@ -1091,19 +1098,6 @@ export default class Topology {
     return this.simulation?.find(mX, mY, this.radius)
   }
 
-  // 找到当前被选中的节点
-  public findNodeBySelectBox(selected: TopoNode[], allSelected: TopoNode[]) {
-    let tempList: TopoNode[] = []
-    let flag = false
-    selected.forEach((item1) => {
-      flag = allSelected.some((item2) => item1.id === item2.id)
-      if (!flag) {
-        tempList.push(item1)
-      }
-    })
-    return [...deepCopy(allSelected), ...tempList]
-  }
-
   // 根据起始坐标来寻找节点
   public findNodesByBox(start: Point, end: Point) {
     let matrix = this.pointMapMatrix(start, end)
@@ -1122,6 +1116,47 @@ export default class Topology {
         )
       }
     })
+  }
+
+  // 根据节点找到相关的连线
+  public findLinksByNodes(nodes: string[] | TopoNode[] | string | TopoNode) {
+    if (Array.isArray(nodes)) {
+      const nodesCopy = nodes.map((m) => {
+        if (typeof m === 'object') {
+          return m.id
+        } else {
+          return m
+        }
+      })
+      return this.links.reduce<TopoLink[]>((res, cur) => {
+        if (typeof cur.source === 'object' && typeof cur.target === 'object') {
+          if (nodesCopy.includes(cur.source.id) || nodesCopy.includes(cur.target.id)) {
+            res.push(cur)
+          }
+        }
+        if (typeof cur.source === 'string' && typeof cur.target === 'string') {
+          if (nodesCopy.includes(cur.source) || nodesCopy.includes(cur.target)) {
+            res.push(cur)
+          }
+        }
+        return res
+      }, [])
+    } else {
+      const nodeCopy = typeof nodes === 'object' ? nodes.id : nodes
+      return this.links.reduce<TopoLink[]>((res, cur) => {
+        if (typeof cur.source === 'object' && typeof cur.target === 'object') {
+          if (nodeCopy === cur.source.id || nodeCopy === cur.target.id) {
+            res.push(cur)
+          }
+        }
+        if (typeof cur.source === 'string' && typeof cur.target === 'string') {
+          if (nodeCopy === cur.source || nodeCopy === cur.target) {
+            res.push(cur)
+          }
+        }
+        return res
+      }, [])
+    }
   }
 
   // 坐标映射-点
@@ -1166,7 +1201,7 @@ export default class Topology {
   public callBack<T>(name: string | symbol, ...arg: Array<T>) {
     if (this.cbList.has(name)) {
       if (this.cbList.get(name)) {
-        this.cbList.get(name)?.call(this, ...arg)
+        this.cbList.get(name)?.apply(this, ...arg)
       } else {
         console.error(`${name.toString()}: 没有对应的回调函数`)
       }
@@ -1415,6 +1450,14 @@ export default class Topology {
     return {
       width: c?.clientWidth || 0,
       height: c?.clientHeight || 0
+    }
+  }
+
+  public isTopoLinkData(linkData: TopoLink | TopoLink[]) {
+    if (Array.isArray(linkData)) {
+      return linkData.every((s) => typeof s.source === 'object' && typeof s.target === 'object')
+    } else {
+      return typeof linkData.source === 'object' && typeof linkData.target === 'object'
     }
   }
 }

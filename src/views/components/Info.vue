@@ -22,15 +22,13 @@ const props = defineProps<{
 const list = computed(() =>
   props.data
     ? Object.keys(props.data)
-        .map((key) =>
-          props.data[key]
-            ? {
-                label: key,
-                value: props.data[key]
-              }
-            : null
-        )
-        .filter((f) => f)
+        .map((key) => {
+          return {
+            label: key,
+            value: props.data[key]
+          }
+        })
+        .filter((f) => f.value)
     : []
 )
 </script>
@@ -39,7 +37,6 @@ const list = computed(() =>
 .wrapper-info {
   height: 48px;
   line-height: 48px;
-  // border-bottom: 4px solid #747d8c;
   list-style: none;
   display: flex;
   li {

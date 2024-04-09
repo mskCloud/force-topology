@@ -5,34 +5,30 @@
       <Info :data="status"></Info>
       <div id="topology" />
     </main>
-    <DataPane :node-data="nodes" :link-data="links" :config-data="topologyConfig" />
+    <DataPane
+      :node-data="nodes"
+      :link-data="links"
+      :config-data="topologyConfig"
+      @handle-data-pane-opt="handleDataPaneOpt"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref,shallowRef, watchEffect, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, watchEffect, onMounted, onUnmounted } from 'vue'
 import { generateNode, generateLink, generateLinkById } from './mock'
-import Topology from './topology'
-import { TopoNode, TopoLinkRaw, TopoLinkData } from './topology'
-import Options from './Options.vue'
-import DataPane from './DataPane.vue'
-import Info from './Info.vue'
+import Topology, { TopoLink } from './topology'
+import { TopoNode, TopoLinkRaw, TopoLinkData, TopoConfig } from './topology'
+import Options from './components/Options.vue'
+import DataPane from './components/DataPane.vue'
+import Info from './components/Info.vue'
 
 const nodes = ref<TopoNode[]>([])
 const links = ref<TopoLinkRaw[]>([])
 const topology = shallowRef<Topology | null>(null)
 const optionsRef = ref()
-const topologyConfig = ref({
-  configNode: {
-    font: '12',
-    radius: 30
-  },
-  configLink: {
-    side: 4,
-    linkWidth: 2,
-    textGap: 6,
-    lineLength: 0
-  }
+const topologyConfig = ref<TopoConfig>({
+  node_radius: 30
 })
 const status = ref({
   状态1: '预览中',
@@ -84,12 +80,14 @@ function handleEvent(item: Item) {
   }
 
   if (item.key === 'addNode') {
-    nodes.value.push(...generateNode(4, nodes.value))
-    links.value.push(...generateLink(4, links.value, nodes.value))
+    nodes.value.push(...generateNode(5, nodes.value))
+    links.value.push(...generateLink(5, links.value, nodes.value))
     topology.value?.updateNodesAndLinks(nodes.value, links.value)
   }
 
   if (item.key === 'delNode') {
+    const selectedNodes = topology.value?.selectedNodes || []
+    topology.value?.deleteNodesAndLinksById(selectedNodes?.map((m) => m.id))
   }
 
   if (item.key === 'openLink') {
@@ -115,7 +113,7 @@ function handleEvent(item: Item) {
     }
     item.value = !item.value
     if (item.value) {
-      topology.value?.boxSelect((res: TopoNode[]) => {
+      topology.value?.boxSelect((res: TopoNode[], links: TopoLink) => {
         console.log(res)
       })
     } else {
@@ -133,6 +131,15 @@ function handleEvent(item: Item) {
   }
   if (item.key === 'temp') {
     topology.value?.getViewPortSize()
+  }
+}
+
+function handleDataPaneOpt(type: string, node: TopoNode) {
+  if (type === 'select') {
+    topology.value?.locateToNodeById(node)
+  }
+  if (type === 'del') {
+    topology.value?.deleteNodesAndLinksById([node.id])
   }
 }
 </script>

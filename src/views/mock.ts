@@ -1,10 +1,6 @@
-// import { links, nodes } from './../../../knower/src/views/D3/mock'
 import { TopoNode, TopoLinkRaw } from './topology'
 import svg from '../assets/vue.svg'
 import img from '../assets/7.jpg'
-// export const nodes = []
-
-// export const links = []
 
 export function generateNode(nums: number = 1, nodes: any) {
   const temp: TopoNode[] = []
