@@ -1,12 +1,17 @@
 import { TopoNode, TopoLinkRaw } from './topology'
 import svg from '../assets/vue.svg'
 
+const iconMap = import.meta.glob<string>('../assets/tieba/*.png', {
+  import: 'default',
+  eager: true
+})
+
 function randomIcon(type = 'image') {
   if (type !== 'image') {
     return svg
   }
   const r = Math.floor(Math.random() * 43 + 1)
-  return `/src/assets/tieba/${r}.png`
+  return iconMap[`../assets/tieba/${r}.png`]
 }
 
 export function nodeApi(nums: number = 1, nodes: any) {
