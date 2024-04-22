@@ -1,15 +1,15 @@
 <template>
-  <ul class="wrapper-info">
-    <li v-for="item in list" :key="item.label">
-      <span>{{ item.label }}</span>
-      ---
-      <span>{{ item.value }}</span>
-    </li>
-  </ul>
+  <div class="info">
+    <span class="info-title">状态:</span>
+    <NTag v-for="item in list" :key="item.label" type="primary" :bordered="false">
+      {{ item.value }}
+    </NTag>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { NTag } from 'naive-ui'
 
 type ObjStr = {
   [key: string]: any
@@ -33,20 +33,19 @@ const list = computed(() =>
 )
 </script>
 
-<style scoped lang="less">
-.wrapper-info {
-  height: 48px;
-  line-height: 48px;
-  list-style: none;
+<style scoped lang="scss">
+.info {
   display: flex;
-  li {
-    margin-right: 16px;
-    span:first-child {
-      font-weight: bold;
-    }
-    span:last-child {
-      color: #ff4757;
-    }
+  height: 3rem;
+  align-items: center;
+  list-style: none;
+  padding: 0 1rem;
+  &-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  > * {
+    margin-right: 0.5rem;
   }
 }
 </style>

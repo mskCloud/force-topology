@@ -1,78 +1,93 @@
 <template>
-  <div>
-    <ul class="wrapper-data">
-      <li>
-        <h3 @click="collapseNode = !collapseNode">Node数据{{ collapseNode ? '[-]' : '[+]' }}</h3>
-        <ol v-if="collapseNode">
-          <li v-for="node in nodeData" :key="node.id">
-            <div>{{ node.name }}</div>
-            <div>
-              <span @click="optDataPane('select', node)">选择</span>
-              <span @click="optDataPane('del', node)">删除</span>
-            </div>
-          </li>
-        </ol>
-      </li>
-      <li>
-        <h3 @click="collapseLink = !collapseLink">Link数据{{ collapseLink ? '[-]' : '[+]' }}</h3>
-        <ol v-if="collapseLink">
-          <li v-for="link in linkData" :key="link.id">
-            <div>{{ link.name }}</div>
-          </li>
-        </ol>
-      </li>
-      <li>
-        <h3 @click="collapseConfig = !collapseConfig">
-          Config数据{{ collapseConfig ? '[-]' : '[+]' }}
-        </h3>
-        <ul v-if="collapseConfig">
-          <li v-for="(item, key) in configData" :key="key">
-            <strong>{{ key }}</strong>
-            <span>{{ item }}</span>
-          </li>
-        </ul>
-      </li>
-    </ul>
-    <div></div>
+  <div class="data-pane">
+    <div class="data-pane-header">配置控制</div>
+    <div class="config-form">
+      <!-- <div class="config-item">
+        <div class="config-item-title">节点半径</div>
+        <NInputNumber v-model:value="config.nodeRadius"></NInputNumber>
+      </div>
+      <div class="config-item">
+        <div class="config-item-title">节点间隔</div>
+        <NInputNumber v-model:value="config.nodeGap"></NInputNumber>
+      </div> -->
+      <div class="config-item">
+        <div class="config-item-title">节点环颜色</div>
+        <NColorPicker v-model:value="config.nodeRingColor"></NColorPicker>
+      </div>
+      <div class="config-item">
+        <div class="config-item-title">线条颜色</div>
+        <NColorPicker v-model:value="config.linkColor"></NColorPicker>
+      </div>
+      <div class="config-item">
+        <div class="config-item-title">高亮颜色</div>
+        <NColorPicker v-model:value="config.highlightColor"></NColorPicker>
+      </div>
+      <div class="config-item">
+        <div class="config-item-title">背景颜色</div>
+        <NColorPicker v-model:value="config.containerBg"></NColorPicker>
+      </div>
+      <div class="config-item">
+        <div class="config-item-title">背景（编辑）颜色</div>
+        <NColorPicker v-model:value="config.containerBgEdit"></NColorPicker>
+      </div>
+      <!-- <div class="config-item">
+        <div class="config-item-title">缩放限制</div>
+        <NInputNumber v-model:value="config.nodeGap"></NInputNumber>
+      </div> -->
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { TopoNode, TopoLinkData, TopoLinkRaw } from '../topology'
+import { computed, ref, watch, watchEffect } from 'vue'
+import { NColorPicker, NInputNumber } from 'naive-ui'
+import { TopoNode, TopoLinkData, TopoLinkRaw, TopoConfig } from '../topology'
+import { debounced } from '../tools'
 const props = defineProps<{
   nodeData?: TopoNode[]
   linkData?: TopoLinkData[] | TopoLinkRaw[]
   configData?: any
 }>()
-const emit = defineEmits(['handleDataPaneOpt'])
+const emit = defineEmits(['onWatchConfig'])
 
-const collapseNode = ref(false)
-const collapseLink = ref(false)
-const collapseConfig = ref(false)
-
-function optDataPane(type: string, node: TopoNode) {
-  emit('handleDataPaneOpt', type, node)
-}
+const config = ref<TopoConfig>({
+  linkColor: '#ff7979',
+  nodeRadius: 30,
+  nodeGap: 4,
+  nodeRingColor: '#ff7979',
+  highlightColor: '#22a6b3',
+  containerBg: '#f6e58d',
+  containerBgEdit: '#c7ecee'
+})
+watchEffect(() => {
+  emit('onWatchConfig', config.value)
+})
 </script>
 
-<style scoped lang="less">
-.wrapper-data {
-  max-width: 15rem;
-  padding: 0 1rem 0 1.5rem;
-  overflow: auto;
-  ol,
-  ul {
-    li {
-      display: flex;
-      justify-content: space-between;
-      line-height: 1.8;
-      span {
-        padding-left: 0.5rem;
-        cursor: pointer;
-        &:hover {
-          color: #ff4757;
-        }
+<style scoped lang="scss">
+.data-pane {
+  height: 100%;
+  min-width: 20rem;
+  padding: 1rem 0.8rem;
+  &-header {
+    height: 3rem;
+    color: rgba(39, 174, 96, 1);
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 7px;
+    border-bottom: 4px solid rgba(52, 73, 94, 1);
+  }
+
+  .config-form {
+    height: calc(100% - 3rem);
+    padding-right: 1rem;
+    overflow: auto;
+    .config-item {
+      margin-bottom: 0.6rem;
+      &-title {
+        font-size: 1rem;
+        font-weight: bold;
+        margin-bottom: 7px;
       }
     }
   }
