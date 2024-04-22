@@ -6,7 +6,7 @@ function randomIcon(type = 'image') {
     return svg
   }
   const r = Math.floor(Math.random() * 43 + 1)
-  return `/src/assets/tieba/${r}.gif`
+  return `/src/assets/tieba/${r}.png`
 }
 
 export function nodeApi(nums: number = 1, nodes: any) {
