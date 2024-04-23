@@ -118,8 +118,8 @@ function handleEvent(item: Item) {
     }
     item.value = !item.value
     if (item.value) {
-      topology.value?.boxSelect((res: TopoNode[], links: TopoLink) => {
-        console.log(res)
+      topology.value?.boxSelect((nodes: TopoNode[], links: TopoLink) => {
+        console.log(nodes, links)
       })
     } else {
       topology.value?.boxSelectCancel()

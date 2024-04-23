@@ -7,7 +7,10 @@ import {
   Simulation,
   SimulationLinkDatum,
   SimulationNodeDatum,
-  ForceLink
+  ForceLink,
+  ForceCollide,
+  ForceManyBody,
+  ForceCenter
 } from 'd3-force'
 import { select, selectAll, Selection } from 'd3-selection'
 import { zoom as zoomD3, zoomIdentity, D3ZoomEvent } from 'd3-zoom'
@@ -97,7 +100,7 @@ const CONFIG = {
   containerBgEdit: '#c7ecee',
   // 节点相关
   nodeRadius: 30,
-  nodeGap: 10,
+  nodeGap: 3,
   nodeRingColor: '#ff7979',
   isRound: true,
   // 线条相关
@@ -113,7 +116,8 @@ const CONFIG = {
   maxZoom: 0,
   highlightColor: '#22a6b3'
 }
-export type TopoConfig = Partial<typeof CONFIG>
+type TopoConfigInner = typeof CONFIG
+export type TopoConfig = Partial<TopoConfigInner>
 
 type LinkConfig = {
   lineLength: number
@@ -127,13 +131,17 @@ export default class Topology {
   private el: string
   private nodes: Array<TopoNode>
   private links: Array<TopoLink>
-  private config: TopoConfig
+  private config: TopoConfigInner
   private container: Selection<Element, any, any, any> | null
   private viewport: Selection<SVGSVGElement, any, any, any> | null
   private graph: Selection<SVGGElement, any, any, any> | null
   private graphNodes: Selection<SVGGElement, TopoNode, any, any> | null
   private graphLinks: Selection<SVGGElement, TopoLinkData, any, any> | null
   private simulation: Simulation<TopoNode, TopoLink> | null
+  private forceLink: ForceLink<TopoNode, TopoLink> | null
+  private forceCollide: ForceCollide<TopoNode> | null
+  private forceManyBody: ForceManyBody<TopoNode> | null
+  private forceCenter: ForceCenter<TopoNode> | null
   private nodeTotal: Selection<SVGGElement, TopoNode, any, any> | null
   private linkTotal: Selection<SVGGElement, TopoLink, any, any> | null
   private linkLineOut: Selection<SVGPathElement, any, any, any> | null
@@ -167,6 +175,10 @@ export default class Topology {
     this.graphLinks = null
     // 力导模型
     this.simulation = null
+    this.forceCollide = null
+    this.forceLink = null
+    this.forceManyBody = null
+    this.forceCenter = null
     // nodeTotal 整体
     this.nodeTotal = null
     // linkTotal 整体
@@ -229,24 +241,25 @@ export default class Topology {
       return
     }
     const { width, height } = this.getViewPortSize()
-    this.simulation = forceSimulation<TopoNode, TopoLink>()
-      .force(
-        'collide',
-        forceCollide()
-          .radius(this.radius * 3)
-          .strength(0.7)
-          .iterations(1)
-      )
-      .force('charge', forceManyBody().distanceMin(10).distanceMax(100).strength(30))
-      .force('center', forceCenter(width / 2, height / 2))
-      .force(
-        'link',
-        forceLink<TopoNode, TopoLink>()
-          .distance(100)
-          .strength(0.7)
-          .id((d: TopoNode) => d.id)
-      )
-      .on('tick', () => this.tick())
+    this.forceCollide = forceCollide()
+      .radius(this.config.nodeRadius * this.config.nodeGap)
+      .strength(0.7)
+      .iterations(1)
+
+    this.forceLink = forceLink<TopoNode, TopoLink>(this.links)
+      .distance(100)
+      .strength(0.7)
+      .id((d: TopoNode) => d.id)
+
+    this.forceManyBody = forceManyBody().distanceMin(10).distanceMax(100).strength(30)
+    this.forceCenter = forceCenter(width / 2, height / 2)
+
+    this.simulation = forceSimulation<TopoNode, TopoLink>(this.nodes)
+      .force('collide', this.forceCollide)
+      .force('charge', this.forceManyBody)
+      .force('center', this.forceCenter)
+      .force('link', this.forceLink)
+      .on('tick', this.tick())
   }
 
   // 核心方法
@@ -304,29 +317,29 @@ export default class Topology {
   private appendNodeClass() {
     if (!this.nodeTotal) return
 
-    const imgWidth = this.radius * 1.5
-    const imgHeight = this.radius * 1.5
+    const imgWidth = this.config.nodeRadius * 1.5
+    const imgHeight = this.config.nodeRadius * 1.5
     this.nodeTotal
       .append('rect')
       .style('fill', 'var(--node-ring-color-active)')
       .style('stroke', 'var(--node-ring-color)')
       .style('opacity', '0')
-      .attr('width', this.radius * 2)
-      .attr('height', this.radius * 2)
-      .attr('x', `-${this.radius}px`)
-      .attr('y', `-${this.radius}px`)
+      .attr('width', this.config.nodeRadius * 2)
+      .attr('height', this.config.nodeRadius * 2)
+      .attr('x', `-${this.config.nodeRadius}px`)
+      .attr('y', `-${this.config.nodeRadius}px`)
     this.nodeTotal
       .append('circle')
       .style('fill', 'var(--node-bg-color)')
       .style('stroke', 'var(--node-ring-color)')
       .style('stroke-width', 'var(--node-ring-width)')
-      .attr('r', this.radius)
+      .attr('r', this.config.nodeRadius)
     this.nodeTotal
       .append('text')
       .style('fill', 'var(--text-color-primary)')
       .style('font-size', 'var(--text-size-md)')
       .style('text-anchor', 'middle')
-      .attr('y', `${this.radius + 20}px`)
+      .attr('y', `${this.config.nodeRadius + 20}px`)
       .text((d) => d.name)
     // 处理图片以及svg
     this.nodeTotal.each(function (d) {
@@ -504,32 +517,28 @@ export default class Topology {
     if (!this.graphNodes) {
       return
     }
-    this.nodeTotal = this.graphNodes
-      .selectAll<SVGGElement, TopoNode>('#topology .node')
-      .data(this.nodes, function (d: TopoNode) {
-        return d.id
-      })
+    this.nodeTotal = this.graphNodes.selectChildren<SVGGElement, TopoNode>().data(this.nodes)
     this.appendNodeToGraph()
-    this.nodeTotal = this.nodeTotal.merge(this.nodeTotal)
+    // this.nodeTotal = this.nodeTotal.merge(this.nodeTotal)
   }
 
   private updatedLink() {
     if (!this.graphLinks) return
     this.linkTotal = this.graphLinks
-      .selectAll<SVGGElement, TopoLinkData>('#topology .link')
-      .data(this.links, function (d: TopoLink) {
-        return d.id
+      .selectChildren<SVGGElement, TopoLinkData>()
+      .data(this.links, function () {
+        // todo 这里会错误显示
+        return 'id'
       })
     if (!this.linkTotal) {
       return
     }
     const { linkPath, linkText } = this.appendLinkToGraph()
-    this.linkTotal = this.linkTotal.merge(this.linkTotal)
 
-    this.linkLineIn = this.graphLinks.selectAll('#topology .link-path')
+    this.linkLineIn = this.graphLinks.selectChildren('.link-path')
     this.linkLineIn = linkPath && linkPath.merge(this.linkLineIn)
 
-    this.linkLineText = this.graphLinks.selectAll('#topology .link-text')
+    this.linkLineText = this.graphLinks.selectChildren('.link-text')
     this.linkLineText = linkText && linkText.merge(this.linkLineText)
   }
 
@@ -538,26 +547,23 @@ export default class Topology {
       return
     }
     this.simulation.nodes(this.nodes)
-
-    this.simulation
-      .force<ForceLink<TopoNode, TopoLink>>('link')
-      ?.links(this.links)
-      .id(function id(d) {
-        return d.id
-      })
+    this.forceLink?.links(this.links)
     this.updatedNode()
     this.updatedLink()
   }
 
   private tick() {
-    this.tickNode()
-    this.tickLink()
+    const _this = this
+    return function () {
+      _this.tickNode.call(_this)
+      _this.tickLink.call(_this)
+    }
   }
 
   private tickNode() {
     if (this.nodeTotal) {
       this.nodeTotal.attr('transform', function (d) {
-        return `translate(${d.x}, ${d.y})`
+        return `translate(${d.x || 0}, ${d.y || 0})`
       })
     }
   }
@@ -593,12 +599,12 @@ export default class Topology {
           )
           source = _this.rotatePoint(
             { x: d.source.x, y: d.source.y },
-            { x: d.source.x, y: d.source.y! + _this.radius + 2 },
+            { x: d.source.x, y: d.source.y! + _this.config.nodeRadius + 2 },
             90 - linkData.angle
           )
           target = _this.rotatePoint(
             { x: d.target.x!, y: d.target.y! },
-            { x: d.target.x, y: d.target.y! + _this.radius + 2 },
+            { x: d.target.x, y: d.target.y! + _this.config.nodeRadius + 2 },
             -90 - linkData.angle
           )
           linkData.lineLength = _this.getLink_length(source, target, linkData)
@@ -800,6 +806,9 @@ export default class Topology {
             .attr('class', 'link temp-link-v50')
             .append('path')
             .attr('class', 'link-path')
+            .style('fill', 'var(--link-line-color)')
+            .style('stroke', 'var(--link-line-color)')
+            .style('stroke-width', 'var(--link-width)')
         }
 
         startLink_x = event.subject.x
@@ -833,13 +842,12 @@ export default class Topology {
       }
       // 添加连线
       if (_this.isAddLink) {
-        let end = _this.simulation?.find(event.x, event.y, _this.radius)
+        let end = _this.simulation?.find(event.x, event.y, _this.config.nodeRadius)
         if (end) {
           linkTemp?.attr('d', `M ${startLink_x} ${startLink_y} L ${end.x} ${end.y}`)
           _this.callBack('_addLink', {
             source: event.subject,
-            target: end,
-            success: true
+            target: end
           })
         } else {
           linkTemp?.remove()
@@ -1018,28 +1026,32 @@ export default class Topology {
       selectedNodes = _this.findNodesByBox(findStart, findEnd)
 
       // 设置选中节点样式
-      _this.nodeTotal?.each(function () {
-        select<SVGGElement, TopoNode>(this).attr('class', function (d: TopoNode) {
-          if (selectedNodes.some((v) => v.id === d.id)) {
-            return 'node'
-          } else {
-            return 'node no-active'
-          }
-        })
+      _this.nodeTotal?.each(function (d) {
+        const node = select(this)
+        const circle = node.select('circle')
+        if (selectedNodes.some((v) => v.id === d.id)) {
+          node.style('opacity', '1')
+          circle
+            .style('fill', 'var(--node-bg-color-active)')
+            .style('stroke', 'var(--node-ring-color-active)')
+        } else {
+          node.style('opacity', '0.3')
+          circle.style('fill', 'var(--node-bg-color)').style('stroke', 'var(--node-ring-color)')
+        }
       })
 
       // 设置选中连线样式
-      _this.linkTotal?.each(function () {
-        select<SVGGElement, TopoLinkData>(this).attr('class', function (d: TopoLinkData) {
-          if (
-            selectedNodes.some((v) => v.id === d.source.id) &&
-            selectedNodes.some((v) => v.id === d.target.id)
-          ) {
-            return 'link active'
-          } else {
-            return 'link no-active'
-          }
-        })
+      _this.linkTotal?.each(function (d) {
+        const sourceId = typeof d.source === 'string' ? d.source : d.source.id
+        const targetId = typeof d.target === 'string' ? d.target : d.target.id
+        if (
+          selectedNodes.some((v) => v.id === sourceId) &&
+          selectedNodes.some((v) => v.id === targetId)
+        ) {
+          select(this).style('stroke', 'var(--link-line-color-active)').style('opacity', '1')
+        } else {
+          select(this).style('stroke', 'var(--link-line-color)').style('opacity', '0.3')
+        }
       })
     }
 
@@ -1056,8 +1068,7 @@ export default class Topology {
           select(this).attr('pointer-events', 'none')
         }
       })
-
-      _this.callBack('_boxSelect', _this.selectedNodes)
+      _this.callBack('_boxSelect', _this.selectedNodes, _this.selectedLinks)
     }
     return dragD3<SVGSVGElement, any>().on('start', dragStart).on('drag', drag).on('end', dragEnd)
   }
@@ -1102,7 +1113,7 @@ export default class Topology {
         select(this)
           .attr('class', 'node active')
           .select('circle')
-          .attr('r', _this.radius * 1.1)
+          .attr('r', _this.config.nodeRadius * 1.1)
       }
     })
   }
@@ -1125,7 +1136,7 @@ export default class Topology {
     this.linkLineOut = null
     this.linkLineIn = null
     this.linkLineText = null
-    this.radius = 20
+    this.config.nodeRadius = 20
     this.selectedNodes = []
     this.isStartTopology = true
     this.isAddLink = false
@@ -1147,7 +1158,7 @@ export default class Topology {
   public findNodeByPoint(x: number, y: number) {
     let mX = this.pointMapSpot(x, y).x
     let mY = this.pointMapSpot(x, y).y
-    return this.simulation?.find(mX, mY, this.radius)
+    return this.simulation?.find(mX, mY, this.config.nodeRadius)
   }
 
   // 根据起始坐标来寻找节点
@@ -1159,12 +1170,12 @@ export default class Topology {
     return this.nodes.filter((v) => {
       if (v.x && v.y) {
         return (
-          v.x >= startMap.x - this.radius &&
-          v.y >= startMap.y - this.radius &&
-          Math.abs(v.x - (startMap.x - this.radius)) <=
-            Math.abs(endMap.x + this.radius * 2 - startMap.x) &&
-          Math.abs(v.y - (startMap.y - this.radius)) <=
-            Math.abs(endMap.y + this.radius * 2 - startMap.y)
+          v.x >= startMap.x - this.config.nodeRadius &&
+          v.y >= startMap.y - this.config.nodeRadius &&
+          Math.abs(v.x - (startMap.x - this.config.nodeRadius)) <=
+            Math.abs(endMap.x + this.config.nodeRadius * 2 - startMap.x) &&
+          Math.abs(v.y - (startMap.y - this.config.nodeRadius)) <=
+            Math.abs(endMap.y + this.config.nodeRadius * 2 - startMap.y)
         )
       }
     })
@@ -1182,12 +1193,12 @@ export default class Topology {
       })
       return this.links.reduce<TopoLink[]>((res, cur) => {
         if (typeof cur.source === 'object' && typeof cur.target === 'object') {
-          if (nodesCopy.includes(cur.source.id) || nodesCopy.includes(cur.target.id)) {
+          if (nodesCopy.includes(cur.source.id) && nodesCopy.includes(cur.target.id)) {
             res.push(cur)
           }
         }
         if (typeof cur.source === 'string' && typeof cur.target === 'string') {
-          if (nodesCopy.includes(cur.source) || nodesCopy.includes(cur.target)) {
+          if (nodesCopy.includes(cur.source) && nodesCopy.includes(cur.target)) {
             res.push(cur)
           }
         }
@@ -1197,12 +1208,12 @@ export default class Topology {
       const nodeCopy = typeof nodes === 'object' ? nodes.id : nodes
       return this.links.reduce<TopoLink[]>((res, cur) => {
         if (typeof cur.source === 'object' && typeof cur.target === 'object') {
-          if (nodeCopy === cur.source.id || nodeCopy === cur.target.id) {
+          if (nodeCopy === cur.source.id && nodeCopy === cur.target.id) {
             res.push(cur)
           }
         }
         if (typeof cur.source === 'string' && typeof cur.target === 'string') {
-          if (nodeCopy === cur.source || nodeCopy === cur.target) {
+          if (nodeCopy === cur.source && nodeCopy === cur.target) {
             res.push(cur)
           }
         }
@@ -1250,10 +1261,10 @@ export default class Topology {
   }
 
   // 回调函数
-  public callBack<T>(name: string | symbol, ...arg: Array<T>) {
+  public callBack<T>(name: string | symbol, ...args: any) {
     if (this.cbList.has(name)) {
       if (this.cbList.get(name)) {
-        this.cbList.get(name)?.apply(this, ...arg)
+        this.cbList.get(name)?.call(this, ...args)
       } else {
         console.error(`${name.toString()}: 没有对应的回调函数`)
       }
@@ -1468,7 +1479,7 @@ export default class Topology {
 
   public loadConfig(c?: TopoConfig) {
     c && Object.assign(this.config, c)
-    this.radius = this.config.nodeRadius!
+    this.forceCollide && this.forceCollide.radius(this.config.nodeRadius * this.config.nodeGap)
     cssVar['--node-ring-color'] = this.config.nodeRingColor
     cssVar['--bg-color'] = this.config.containerBg
     cssVar['--bg-color-stop'] = this.config.containerBgEdit
@@ -1480,5 +1491,6 @@ export default class Topology {
     cssVar['--link-width'] = this.config.linkWidth + 'px'
     cssVar['--text-size-md'] = this.config.fontSize + 'px'
     this.container && injectCssVar(this.container)
+    this.simulation?.restart()
   }
 }

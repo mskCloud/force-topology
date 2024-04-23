@@ -2,14 +2,14 @@
   <div class="data-pane">
     <div class="data-pane-header">配置控制</div>
     <div class="config-form">
-      <!-- <div class="config-item">
+      <div class="config-item">
         <div class="config-item-title">节点半径</div>
-        <NInputNumber v-model:value="config.nodeRadius"></NInputNumber>
+        <NInputNumber v-model:value="config.nodeRadius" :min="1" :step="10"></NInputNumber>
       </div>
       <div class="config-item">
         <div class="config-item-title">节点间隔</div>
-        <NInputNumber v-model:value="config.nodeGap"></NInputNumber>
-      </div> -->
+        <NInputNumber v-model:value="config.nodeGap" :min="1"></NInputNumber>
+      </div>
       <div class="config-item">
         <div class="config-item-title">节点环颜色</div>
         <NColorPicker v-model:value="config.nodeRingColor"></NColorPicker>
@@ -53,7 +53,7 @@ const emit = defineEmits(['onWatchConfig'])
 const config = ref<TopoConfig>({
   linkColor: '#ff7979',
   nodeRadius: 30,
-  nodeGap: 4,
+  nodeGap: 2,
   nodeRingColor: '#ff7979',
   highlightColor: '#22a6b3',
   containerBg: '#f6e58d',

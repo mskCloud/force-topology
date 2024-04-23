@@ -1,4 +1,4 @@
-import { TopoNode, TopoLinkRaw } from './topology'
+import { TopoNode, TopoLinkRaw, TopoLink } from './topology'
 import svg from '../assets/vue.svg'
 
 const iconMap = import.meta.glob<string>('../assets/tieba/*.png', {
@@ -82,15 +82,13 @@ export function newLinkById(
   source: string,
   target: string,
   type: string = '1-N'
-) {
+): TopoLinkRaw {
   return {
     id: `link_${links.length}`,
     index: links.length,
     name: `${source}=>${target}`,
     source: source,
-    sourceId: source,
     target: target,
-    targetId: target,
     linkType: type,
     tipInfo: {
       id: `link_${links.length}`,
